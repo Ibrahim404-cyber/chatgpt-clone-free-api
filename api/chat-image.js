@@ -225,7 +225,10 @@ export default async function handler(req, res) {
     }
 
     // multimodal payload — text FIRST, then image pointers (verified order)
-    const parts = [message].concat(assetParts);
+    // multimodal payload — text FIRST, then image pointers (verified order)
+// কোড-ফেন্সিং হিন্ট — মডেলকে সবসময় ```lang ব্লকে কোড দিতে বাধ্য করে।
+const PROMPT_HINT = '\n\n[Formatting instruction: Always respond in Markdown. Wrap EVERY code snippet in triple-backtick fenced blocks with the correct language tag (e.g. ```js, ```python, ```html, ```php, ```sql). Never output raw unwrapped code.]';
+const parts = [message + PROMPT_HINT].concat(assetParts);
     const msgId = buildMsgId();
 
     const payload = {
