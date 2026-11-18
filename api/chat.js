@@ -34,6 +34,10 @@ export default async function handler(req, res) {
     'Cookie': mCookie
   };
 
+  // কোড-ফেন্সিং হিন্ট — মডেলকে সবসময় ```lang ব্লকে কোড দিতে বাধ্য করে।
+  // echo করা "message" অরিজিনালই থাকে — শুধু OpenAI-তে যাওয়া payload-এ যোগ হয়।
+  const PROMPT_HINT = '\n\n[Formatting instruction: Always respond in Markdown. Wrap EVERY code snippet in triple-backtick fenced blocks with the correct language tag (e.g. ```js, ```python, ```html, ```php, ```sql). Never output raw unwrapped code.]';
+
   // PHP-এর মতো করে হুবহু UUID জেনারেট করা
   const chunk1 = randomHex(4);
   const chunk2 = randomHex(2);
@@ -47,7 +51,7 @@ export default async function handler(req, res) {
     messages: [{
         id: msgId,
         author: { role: 'user' },
-        content: { parts: [message], content_type: 'text' },
+        content: { parts: [message + PROMPT_HINT], content_type: 'text' },
         status: 'finished_successfully',
         recipient: 'all',
         metadata: {
@@ -73,7 +77,7 @@ export default async function handler(req, res) {
     force_paragen: false,
     supported_encodings: ['v1'],
     supports_buffering: true,
-    timezone: 'Asia/Ho_Chi_Minh', // PHP-এর মতো সেম টাইমজোন
+    timezone: 'Asia/Ho_Chi_Minh',
     timezone_offset_min: -420,
     system_hints: [],
     is_onboarding_conversation: false,
@@ -121,7 +125,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // যদি Vercel-এর IP Cloudflare ব্লক করে দেয়, তাহলে 403 এরর দেখাবে
     if (!text && response.status !== 200) {
         text = `Error ${response.status}: API request blocked by Cloudflare/OpenAI from Vercel IP.`;
     }
