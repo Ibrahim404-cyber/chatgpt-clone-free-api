@@ -604,15 +604,35 @@
         }
 
         // --- Core Fix: AI Text Sanitizer ---
-        function sanitizeAIResponse(text) {
-            // Remove internal OpenAI UI components that break rendering
-            let cleaned = text.replace(/\{@body[\s\S]*?\}/g, '');
-            cleaned = cleaned.replace(/<button block[\s\S]*?<\/button>/g, '');
-            // Wrap loose HTML with markdown block if it looks like code and isn't already inside backticks
-            if (cleaned.includes('<?php') && !cleaned.includes('```php')) {
-                cleaned = cleaned.replace(/<\?php[\s\S]*?\?>/g, match => `\n\`\`\`php\n${match}\n\`\`\`\n`);
+// --- Core Fix: AI Text Sanitizer ---
+// মডেল ```lang ফেন্স ছাড়া raw কোড দিলেও এবার <pre> ব্লক হবে — Copy বাটন পাবেন।
+function sanitizeAIResponse(text) {
+    // Remove internal OpenAI UI components that break rendering
+    let cleaned = text.replace(/\{@body[\s\S]*?\}/g, '');
+    cleaned = cleaned.replace(/<button block[\s\S]*?<\/button>/g, '');
+
+    // যদি রেসপন্সে ইতিমধ্যে ফেন্স থাকে, তাহলে আর কিছু করব না
+    if (!/```/.test(cleaned)) {
+        // ১) PHP ট্যাগ থাকলে
+        if (cleaned.includes('<?php')) {
+            cleaned = cleaned.replace(/<\?php[\s\S]*?\?>/g, match => `\n\`\`\`php\n${match}\n\`\`\`\n`);
+        }
+        // ২) সম্পূর্ণ HTML ডকুমেন্ট হলে
+        else if (/<!DOCTYPE html>[\s\S]*<\/html>/i.test(cleaned)) {
+            cleaned = cleaned.replace(/(<!DOCTYPE html>[\s\S]*<\/html>)/i, match => `\n\`\`\`html\n${match}\n\`\`\`\n`);
+        }
+        // ৩) পুরো রেসপন্সটাই কোড-সদৃশ হলে (prose marker নেই, অনেক ; { } = : আছে)
+        else {
+            const t = cleaned.trim();
+            const hasProse = /^(Here|Sure|This|The|I |As |Let|Note|Explanation|However|In |Below|Above)/i.test(t);
+            const codeSignals = (t.match(/[;{}()=]/g) || []).length;
+            const lineCount = t.split('\n').length;
+            if (!hasProse && lineCount >= 3 && codeSignals >= 10) {
+                cleaned = '\n```\n' + t + '\n```\n';
             }
-            return cleaned.trim();
+        }
+    }
+    return cleaned.trim();
         }
 
         async function sendMessage() {
